@@ -1,5 +1,24 @@
+# Secrets & local env (any path, e.g. backend/.env)
 .env
+.env.local
+
+# Python
 venv/
+.venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
+
+# Django
+*.log
+db.sqlite3
+
+# Frontend (Node / Vite / Next, etc.)
+node_modules/
+dist/
+.next/
+out/
+build/
+
+# OS
 .DS_Store
