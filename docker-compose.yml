@@ -1,0 +1,5 @@
+# Re-uses docker-compose.dev.yml. Always pass env for DB_* substitution, e.g.:
+#   docker compose --env-file backend/.env up -d
+#   docker compose --env-file backend/.env down
+include:
+  - docker-compose.dev.yml
