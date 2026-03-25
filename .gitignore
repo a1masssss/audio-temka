@@ -1,6 +1,5 @@
 # Secrets & local env (any path, e.g. backend/.env)
 .env
-.env.local
 
 # Python
 venv/
