@@ -1,5 +1,46 @@
-# Re-uses docker-compose.dev.yml. Always pass env for DB_* substitution, e.g.:
-#   docker compose --env-file backend/.env up -d
-#   docker compose --env-file backend/.env down
-include:
-  - docker-compose.dev.yml
+services:
+  db:
+    image: postgres:14
+    container_name: audio_temka_db
+    environment:
+      POSTGRES_USER: ${DB_USER:?Set DB_USER — use backend/.env with --env-file}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?Set DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - backend/.env
+    environment:
+      # Override host-only .env: inside the network, Postgres is the `db` service.
+      DB_HOST: db
+      DB_PORT: "5432"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - backend/.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+volumes:
+  postgres_data:
