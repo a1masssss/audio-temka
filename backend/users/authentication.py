@@ -28,12 +28,6 @@ class ClerkJWTAuthentication(BaseAuthentication):
         if not clerk_id:
             raise AuthenticationFailed("Invalid or expired Clerk session token.")
 
-        try:
-            user = User.objects.get(clerk_id=clerk_id)
-        except User.DoesNotExist as exc:
-            raise AuthenticationFailed(
-                "User is not registered in the app database yet. "
-                "Sign in once so Clerk can sync, or retry shortly."
-            ) from exc
+        user, _ = User.objects.get_or_create(clerk_id=clerk_id)
 
         return (user, None)

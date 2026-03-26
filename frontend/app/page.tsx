@@ -1,146 +1,256 @@
 "use client";
 
+import Link from "next/link";
+import { useClerk } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
-import { useState, useRef } from "react";
+import { Flame, Coffee, Guitar, Film, Sun, Moon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:8000";
+const examples: {
+  icon: LucideIcon;
+  label: string;
+  prompt: string;
+  gradient: string;
+  border: string;
+  iconColor: string;
+}[] = [
+  {
+    icon: Flame,
+    label: "Hype track",
+    prompt: "An aggressive trap beat with heavy 808s and a triumphant brass melody",
+    gradient: "from-orange-500/20 to-red-500/20",
+    border: "hover:border-orange-500/30",
+    iconColor: "text-orange-400",
+  },
+  {
+    icon: Coffee,
+    label: "Lo-fi chill",
+    prompt: "A chill lo-fi hip hop beat with jazzy piano chords and vinyl crackle",
+    gradient: "from-pink-500/20 to-rose-500/20",
+    border: "hover:border-pink-500/30",
+    iconColor: "text-pink-400",
+  },
+  {
+    icon: Guitar,
+    label: "Rock anthem",
+    prompt: "An energetic rock anthem with electric guitars, driving drums, and a big chorus",
+    gradient: "from-purple-500/20 to-violet-500/20",
+    border: "hover:border-purple-500/30",
+    iconColor: "text-purple-400",
+  },
+  {
+    icon: Film,
+    label: "Cinematic score",
+    prompt: "An epic cinematic orchestral piece with strings, horns, and building tension",
+    gradient: "from-green-500/20 to-emerald-500/20",
+    border: "hover:border-green-500/30",
+    iconColor: "text-green-400",
+  },
+  {
+    icon: Sun,
+    label: "Summer vibes",
+    prompt: "A tropical house track with steel drums, upbeat synths, and a catchy drop",
+    gradient: "from-amber-500/20 to-yellow-500/20",
+    border: "hover:border-amber-500/30",
+    iconColor: "text-amber-400",
+  },
+  {
+    icon: Moon,
+    label: "Sleepy ambient",
+    prompt: "A dreamy ambient track with soft pads, gentle rain sounds, and slow piano",
+    gradient: "from-blue-500/20 to-indigo-500/20",
+    border: "hover:border-blue-500/30",
+    iconColor: "text-blue-400",
+  },
+];
+
+const steps = [
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      </svg>
+    ),
+    title: "Type your idea",
+    desc: "Describe the vibe, genre, or mood you want.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+      </svg>
+    ),
+    title: "AI generates it",
+    desc: "We turn your description into a unique music track using AI.",
+  },
+  {
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    ),
+    title: "Download & share",
+    desc: "Get your track as a file and share it anywhere.",
+  },
+];
 
 export default function Home() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const [prompt, setPrompt] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const { isSignedIn } = useAuth();
+  const clerk = useClerk();
 
-  async function handleGenerate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!prompt.trim()) return;
-    if (!isLoaded || !isSignedIn) {
-      setError("Sign in to generate audio.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setAudioUrl(null);
-
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error("Sign in required to generate audio.");
-      }
-
-      const res = await fetch(`${API_BASE}/api/generate-audio/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.detail || `Server error (${res.status})`);
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setAudioUrl(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+  function handleCTA() {
+    if (!isSignedIn) {
+      clerk.openSignIn({ fallbackRedirectUrl: "/generate" });
     }
   }
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-zinc-950">
-      <main className="flex flex-col w-full max-w-2xl gap-8 px-6 py-16">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Audio Generator
-          </h1>
-          <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-            Describe the audio you want to generate and the AI will create it
-            for you.
-          </p>
+    <div className="flex flex-1 flex-col">
+      {/* Hero */}
+      <section className="flex flex-col items-center px-4 pt-24 pb-20 text-center">
+        {/* Badge */}
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-purple-500" />
+          </span>
+          <span className="text-xs font-medium text-purple-300">AI-Powered Music Generation</span>
         </div>
 
-        <form onSubmit={handleGenerate} className="flex flex-col gap-4">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. A calm piano melody with rain in the background..."
-            rows={4}
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500"
-          />
-          <button
-            type="submit"
-            disabled={
-              loading || !prompt.trim() || !isLoaded || !isSignedIn
-            }
-            className="flex h-12 items-center justify-center rounded-lg bg-zinc-900 px-6 font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        <h1 className="max-w-3xl text-5xl font-bold tracking-tight text-white sm:text-7xl">
+          Turn any idea into{" "}
+          <span className="bg-gradient-to-r from-purple-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent animate-gradient">
+            music
+          </span>
+        </h1>
+        <p className="mt-6 max-w-lg text-lg text-white/50 leading-relaxed">
+          Lo-fi beats. Epic soundtracks. Chill vibes.
+          Describe any mood, get a unique track in seconds.
+        </p>
+        <div className="mt-10 flex gap-4">
+          <Link
+            href="/generate"
+            onClick={isSignedIn ? undefined : (e) => { e.preventDefault(); handleCTA(); }}
+            className="group relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white transition-all glow-btn hover:scale-[1.02] active:scale-[0.98]"
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                Generating...
-              </span>
-            ) : (
-              "Generate Audio"
-            )}
-          </button>
-        </form>
+            Start creating
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-0.5">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+          <a
+            href="#use-cases"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white"
+          >
+            See examples
+          </a>
+        </div>
+        <p className="mt-4 text-xs text-white/30">
+          3 free generations &middot; No credit card needed
+        </p>
+      </section>
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400">
-            {error}
-          </div>
-        )}
+      {/* Waveform decoration */}
+      <div className="flex items-center justify-center gap-[3px] py-4">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <div
+            key={i}
+            className="w-[2px] rounded-full bg-gradient-to-t from-purple-500/40 to-violet-400/60"
+            style={{
+              height: 8,
+              animation: `waveform ${1.8 + Math.sin(i * 0.4) * 0.8}s ease-in-out ${i * 0.1}s infinite`,
+              opacity: 0.3 + Math.sin(i * 0.3) * 0.3,
+            }}
+          />
+        ))}
+      </div>
 
-        {audioUrl && (
-          <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-              Generated Audio
+      {/* Use cases */}
+      <section id="use-cases" className="px-4 py-20">
+        <div className="mx-auto max-w-4xl">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white sm:text-3xl">
+              People use it for
             </h2>
-            <audio
-              ref={audioRef}
-              controls
-              src={audioUrl}
-              className="w-full"
-            />
-            <a
-              href={audioUrl}
-              download="generated.wav"
-              className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Download
-            </a>
+            <p className="mt-2 text-sm text-white/40">Click any example to try it out</p>
           </div>
-        )}
-      </main>
+          <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {examples.map((ex) => (
+              <Link
+                key={ex.label}
+                href={`/generate?prompt=${encodeURIComponent(ex.prompt)}`}
+                className={`group glass glass-hover rounded-xl px-5 py-5 text-center transition-all duration-300 ${ex.border} hover:scale-[1.02] flex flex-col items-center`}
+              >
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${ex.gradient}`}>
+                  <ex.icon className={`h-5 w-5 ${ex.iconColor}`} />
+                </div>
+                <span className="mt-3 block text-sm font-semibold text-white/90 group-hover:text-white">
+                  {ex.label}
+                </span>
+                <span className="mt-1 block text-xs text-white/40 line-clamp-2 group-hover:text-white/60">
+                  &ldquo;{ex.prompt}&rdquo;
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="px-4 py-20">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-center text-2xl font-bold text-white sm:text-3xl">
+            How it works
+          </h2>
+          <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-3">
+            {steps.map((item, i) => (
+              <div key={i} className="group text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 text-purple-400 ring-1 ring-purple-500/20 transition-all group-hover:ring-purple-500/40 group-hover:scale-110">
+                  {item.icon}
+                </div>
+                <div className="mt-1 text-xs font-mono text-white/20">0{i + 1}</div>
+                <h3 className="mt-2 text-sm font-semibold text-white/90">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-xs text-white/40 leading-relaxed">
+                  {item.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section className="px-4 py-20 text-center">
+        <div className="mx-auto max-w-md glass rounded-2xl px-8 py-12 glow-purple">
+          <h2 className="text-2xl font-bold text-white">
+            Ready to try it?
+          </h2>
+          <p className="mt-3 text-sm text-white/40">
+            Your first 3 generations are completely free.
+          </p>
+          <Link
+            href="/generate"
+            onClick={isSignedIn ? undefined : (e) => { e.preventDefault(); handleCTA(); }}
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-violet-600 px-6 py-3 text-sm font-semibold text-white transition-all glow-btn hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Start creating for free
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/[0.06] px-4 py-6 text-center">
+        <p className="text-xs text-white/20">
+          audiotemka &middot; Made with AI
+        </p>
+      </footer>
     </div>
   );
 }

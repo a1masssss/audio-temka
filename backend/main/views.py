@@ -26,6 +26,12 @@ class GenerateAudioSerializer(serializers.Serializer):
     prompt = serializers.CharField(
         help_text="Text description of the audio to generate.",
     )
+    genre = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional music genre/style to guide generation.",
+    )
 
 
 class GenerateAudioView(APIView):
@@ -54,6 +60,9 @@ class GenerateAudioView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        genre = str(request.data.get("genre", "")).strip()
+        full_prompt = f"[Genre: {genre}] {str(prompt).strip()}" if genre else str(prompt).strip()
+
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             return Response(
@@ -66,7 +75,7 @@ class GenerateAudioView(APIView):
         contents = [
             types.Content(
                 role="user",
-                parts=[types.Part.from_text(text=str(prompt))],
+                parts=[types.Part.from_text(text=full_prompt)],
             ),
         ]
         generate_content_config = types.GenerateContentConfig(
