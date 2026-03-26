@@ -34,6 +34,7 @@ def generate():
     generate_content_config = types.GenerateContentConfig(
         response_modalities=[
             "audio",
+            "text",
         ],
     )
 

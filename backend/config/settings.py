@@ -29,7 +29,17 @@ SECRET_KEY = 'django-insecure-0er*t#)g3ejsr!ubkk)lfrb&m5h(s7v^sk4yh+@#d+c391s&d=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# localhost + Docker service name; ngrok subdomains (*.ngrok-free.app) for Clerk webhooks.
+_extra_hosts = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "backend",
+    ".ngrok-free.app",
+    ".ngrok.io",
+    *_extra_hosts,
+]
 
 
 # Application definition
@@ -45,6 +55,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'main',
+    'users',
 ]
 
 REST_FRAMEWORK = {
@@ -140,3 +151,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Clerk session JWT verification (same instance as Next.js). JWKS URL in Dashboard → API keys.
+CLERK_JWKS_URL = os.getenv('CLERK_JWKS_URL', '')
+# Optional; if set, `iss` claim must match (e.g. https://your-subdomain.clerk.accounts.dev)
+CLERK_JWT_ISSUER = os.getenv('CLERK_JWT_ISSUER', '')

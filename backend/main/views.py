@@ -1,18 +1,25 @@
+import logging
 import mimetypes
 import os
 
 from django.conf import settings
 from django.http import HttpResponse
 from dotenv import load_dotenv
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from google import genai
 from google.genai import types
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
 from rest_framework import serializers, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from main.models import AudioGeneration
+from users.authentication import ClerkJWTAuthentication
+
 load_dotenv(settings.BASE_DIR / ".env")
+
+logger = logging.getLogger(__name__)
 
 
 class GenerateAudioSerializer(serializers.Serializer):
@@ -22,10 +29,22 @@ class GenerateAudioSerializer(serializers.Serializer):
 
 
 class GenerateAudioView(APIView):
+    authentication_classes = [ClerkJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     @extend_schema(
         request=GenerateAudioSerializer,
         responses={200: OpenApiTypes.BINARY},
         summary="Generate audio from a text prompt",
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                type=str,
+                location=OpenApiParameter.HEADER,
+                required=True,
+                description="Bearer `<Clerk session JWT>` (from Clerk in the browser, e.g. getToken()).",
+            ),
+        ],
     )
     def post(self, request):
         prompt = request.data.get("prompt")
@@ -87,4 +106,14 @@ class GenerateAudioView(APIView):
         filename = f"generated{ext}"
         response = HttpResponse(body, content_type=mime_type)
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        try:
+            AudioGeneration.objects.create(
+                user=request.user,
+                prompt=str(prompt).strip(),
+                mime_type=mime_type,
+            )
+        except Exception as exc:
+            logger.exception("Failed to save AudioGeneration: %s", exc)
+
         return response

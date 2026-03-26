@@ -1,8 +1,14 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { useState, useRef } from "react";
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+  "http://localhost:8000";
+
 export default function Home() {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -12,15 +18,27 @@ export default function Home() {
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!prompt.trim()) return;
+    if (!isLoaded || !isSignedIn) {
+      setError("Sign in to generate audio.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
     setAudioUrl(null);
 
     try {
-      const res = await fetch("http://localhost:8000/api/generate-audio/", {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Sign in required to generate audio.");
+      }
+
+      const res = await fetch(`${API_BASE}/api/generate-audio/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ prompt }),
       });
 
@@ -62,7 +80,9 @@ export default function Home() {
           />
           <button
             type="submit"
-            disabled={loading || !prompt.trim()}
+            disabled={
+              loading || !prompt.trim() || !isLoaded || !isSignedIn
+            }
             className="flex h-12 items-center justify-center rounded-lg bg-zinc-900 px-6 font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {loading ? (
